@@ -83,12 +83,17 @@ jobs:
         distribution: 'temurin'
         java-version: '21'
 
-    - name: Decode Keystore
-      uses: timheuer/base64-to-file@v1.2.4
-      id: android_keystore
-      with:
-        fileName: "android_keystore.jks"
-        encodedString: ${{ secrets.APP_KEYSTORE_BASE64 }}
+    - name: Generate Keystore
+      run: |
+        keytool -genkey -v \
+          -keystore ${{ github.workspace }}/keystore.jks \
+          -alias mykey \
+          -keyalg RSA \
+          -keysize 2048 \
+          -validity 10000 \
+          -storepass android123 \
+          -keypass android123 \
+          -dname "CN=Android, OU=Android, O=Android, L=Android, S=Android, C=US"
 
     - name: Build APK
       run: |
@@ -96,8 +101,12 @@ jobs:
         echo "sdk.dir=${ANDROID_HOME}" > local.properties
         chmod 755 gradlew
         ./gradlew licenseFdroidReleaseReport
-        ./gradlew assembleRelease -Pandroid.injected.signing.store.file=${{ steps.android_keystore.outputs.filePath }} -Pandroid.injected.signing.store.password=${{ secrets.APP_KEYSTORE_PASSWORD }} -Pandroid.injected.signing.key.alias=${{ secrets.APP_KEYSTORE_ALIAS }} -Pandroid.injected.signing.key.password=${{ secrets.APP_KEY_PASSWORD }}
-    
+        ./gradlew assembleRelease \
+          -Pandroid.injected.signing.store.file=${{ github.workspace }}/keystore.jks \
+          -Pandroid.injected.signing.store.password=android123 \
+          -Pandroid.injected.signing.key.alias=mykey \
+          -Pandroid.injected.signing.key.password=android123
+
     - name: Upload arm64-v8a APK
       uses: actions/upload-artifact@v7
       if: ${{  success() }}
