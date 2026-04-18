@@ -42,10 +42,14 @@ object V2RayServiceManager {
             field = value
             val service = value?.get()?.getService()
             V2RayNativeManager.initCoreEnv(service)
-            if (service != null && processFinder == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                processFinder = XrayProcessFinder(service)
-                coreController.registerProcessFinder(processFinder)
-            }
+          if (service != null && processFinder == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+    processFinder = XrayProcessFinder(service)
+    try {
+        coreController.registerProcessFinder(processFinder)
+    } catch (e: Exception) {
+        LogUtil.w(AppConfig.TAG, "registerProcessFinder not supported, skipping")
+    }
+}
         }
 
     /**
