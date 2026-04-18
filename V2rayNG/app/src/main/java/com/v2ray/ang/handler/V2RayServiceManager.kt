@@ -32,7 +32,9 @@ import java.net.InetSocketAddress
 
 object V2RayServiceManager {
 
-    private val coreController: CoreController = V2RayNativeManager.newCoreController(CoreCallback())
+   private val coreController: CoreController by lazy { 
+    V2RayNativeManager.newCoreController(CoreCallback()) 
+}
     private val mMsgReceive = ReceiveMessageHandler()
     private var currentConfig: ProfileItem? = null
     private var processFinder: XrayProcessFinder? = null
