@@ -7,16 +7,13 @@ import androidx.work.WorkManager
 import com.tencent.mmkv.MMKV
 import com.v2ray.ang.AppConfig.ANG_PACKAGE
 import com.v2ray.ang.handler.SettingsManager
+import com.v2ray.ang.handler.V2RayNativeManager
 
 class AngApplication : MultiDexApplication() {
     companion object {
         lateinit var application: AngApplication
     }
 
-    /**
-     * Attaches the base context to the application.
-     * @param base The base context.
-     */
     override fun attachBaseContext(base: Context?) {
         super.attachBaseContext(base)
         application = this
@@ -26,20 +23,19 @@ class AngApplication : MultiDexApplication() {
         .setDefaultProcessName("${ANG_PACKAGE}:bg")
         .build()
 
-    /**
-     * Initializes the application.
-     */
     override fun onCreate() {
         super.onCreate()
-
         MMKV.initialize(this)
-
-        // Initialize WorkManager with the custom configuration
         WorkManager.initialize(this, workManagerConfiguration)
-
-        // Ensure critical preference defaults are present in MMKV early
         SettingsManager.initApp(this)
         SettingsManager.setNightMode()
+
+        // لود هسته alivpn اول از همه
+        try {
+            V2RayNativeManager.loadCore(this)
+        } catch (e: Exception) {
+            // لاگ میشه، ادامه میده
+        }
 
         es.dmoral.toasty.Toasty.Config.getInstance()
             .setGravity(android.view.Gravity.BOTTOM, 0, 300)
