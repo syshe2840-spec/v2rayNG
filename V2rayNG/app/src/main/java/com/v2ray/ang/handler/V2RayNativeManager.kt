@@ -12,29 +12,49 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 object V2RayNativeManager {
     private val initialized = AtomicBoolean(false)
+    private val coreLoaded = AtomicBoolean(false)
+    private var appContext: Context? = null
 
-    fun initCoreEnv(context: Context?) {
-        if (initialized.compareAndSet(false, true)) {
+    fun loadCore(context: Context?) {
+        if (coreLoaded.compareAndSet(false, true)) {
             try {
-                // لود هسته از اپ alivpn
+                appContext = context?.applicationContext
                 val aliVpnLib = context?.packageManager
                     ?.getApplicationInfo("app.mvpn", 0)
                     ?.nativeLibraryDir + "/libgojni.so"
                 System.load(aliVpnLib)
-                LogUtil.i(AppConfig.TAG, "AliVPN core loaded from: $aliVpnLib")
+                LogUtil.i(AppConfig.TAG, "AliVPN core loaded: $aliVpnLib")
+            } catch (e: Exception) {
+                coreLoaded.set(false)
+                LogUtil.e(AppConfig.TAG, "Failed to load core", e)
+                throw e
+            }
+        }
+    }
 
+    fun initCoreEnv(context: Context?) {
+        loadCore(context)
+        if (initialized.compareAndSet(false, true)) {
+            try {
                 Seq.setContext(context?.applicationContext)
                 val assetPath = Utils.userAssetPath(context)
                 val deviceId = Utils.getDeviceIdForXUDPBaseKey()
                 Libv2ray.initCoreEnv(assetPath, deviceId)
-                LogUtil.i(AppConfig.TAG, "V2Ray core environment initialized successfully")
+                LogUtil.i(AppConfig.TAG, "V2Ray core initialized successfully")
             } catch (e: Exception) {
-                LogUtil.e(AppConfig.TAG, "Failed to initialize V2Ray core environment", e)
                 initialized.set(false)
+                LogUtil.e(AppConfig.TAG, "Failed to initialize V2Ray core", e)
                 throw e
             }
-        } else {
-            LogUtil.d(AppConfig.TAG, "V2Ray core environment already initialized, skipping")
+        }
+    }
+
+    fun newCoreController(handler: CoreCallbackHandler): CoreController {
+        return try {
+            Libv2ray.newCoreController(handler)
+        } catch (e: Exception) {
+            LogUtil.e(AppConfig.TAG, "Failed to create core controller", e)
+            throw e
         }
     }
 
@@ -53,15 +73,6 @@ object V2RayNativeManager {
         } catch (e: Exception) {
             LogUtil.e(AppConfig.TAG, "Failed to measure outbound delay", e)
             -1L
-        }
-    }
-
-    fun newCoreController(handler: CoreCallbackHandler): CoreController {
-        return try {
-            Libv2ray.newCoreController(handler)
-        } catch (e: Exception) {
-            LogUtil.e(AppConfig.TAG, "Failed to create core controller", e)
-            throw e
         }
     }
 }
